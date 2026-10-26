@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<title>Tarjetas del Parcial</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una columna centrada tipo "tablero": chips de circuito arriba, la tarjeta como placa de identificación, mandos abajo. */
+:root{
+  --bg:#eef1ee;          /* gris verdoso de chapa pintada */
+  --panel:#ffffff;
+  --ink:#1b2422;
+  --muted:#5b6865;
+  --line:#cfd6d2;
+  --accent:#e0a100;      /* amarillo de señalización */
+  --accent-ink:#1b2422;
+  --ok:#2f7d4f;
+  --bad:#b8452f;
+  --chip:#e2e8e4;
+  --back:#1f2b29;        /* reverso: placa oscura */
+  --back-ink:#f1f4f2;
+  --back-muted:#a9b6b2;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121817;--panel:#1b2321;--ink:#e8edeb;--muted:#9aa8a4;--line:#2e3a37;
+    --accent:#f0b429;--accent-ink:#151b1a;--ok:#5cb87f;--bad:#e2775f;--chip:#24302d;
+    --back:#0c1110;--back-ink:#eef2f0;--back-muted:#93a29e;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121817;--panel:#1b2321;--ink:#e8edeb;--muted:#9aa8a4;--line:#2e3a37;
+  --accent:#f0b429;--accent-ink:#151b1a;--ok:#5cb87f;--bad:#e2775f;--chip:#24302d;
+  --back:#0c1110;--back-ink:#eef2f0;--back-muted:#93a29e;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 28px}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:700;font-size:2rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-mono);font-size:.7rem;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.score{display:flex;gap:8px;font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
+.score span{padding:4px 8px;border-radius:4px;background:var(--chip)}
+.score .s-ok{color:var(--ok)}.score .s-bad{color:var(--bad)}
+
+.label{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cat{font:600 .9rem var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  padding:7px 12px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.cat .n{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.cat[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cat[aria-pressed="true"] .n{color:var(--bg);opacity:.75}
+.opts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.opt{display:flex;align-items:center;gap:6px;font-size:.92rem;cursor:pointer;user-select:none}
+.opt input{width:18px;height:18px;accent-color:var(--accent)}
+.linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:500 .85rem var(--f-body);text-decoration:underline;cursor:pointer;padding:4px}
+
+.progress{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{flex:1;height:6px;background:var(--chip);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+
+/* Tarjeta con volteo */
+.stage{perspective:1400px}
+.card{display:grid;cursor:pointer;transition:transform .45s cubic-bezier(.3,.7,.2,1);transform-style:preserve-3d;min-height:320px;outline:none;border-radius:14px}
+.card:focus-visible{box-shadow:0 0 0 3px var(--accent)}
+.card.flipped{transform:rotateY(180deg)}
+.face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.front{background:var(--panel);border:1px solid var(--line);box-shadow:0 1px 0 var(--line),0 10px 24px -18px rgba(0,0,0,.35)}
+.back{background:var(--back);color:var(--back-ink);transform:rotateY(180deg)}
+.tag{align-self:flex-start;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:4px;background:var(--accent);color:var(--accent-ink);font-weight:600}
+.front .tag{background:var(--chip);color:var(--muted)}
+.q{font-family:var(--f-display);font-weight:600;font-size:1.65rem;line-height:1.15;margin:0;text-wrap:balance}
+.sym{display:flex;justify-content:center;padding:6px 0}
+.sym svg{width:min(150px,40vw);height:auto;color:var(--ink)}
+.a{font-size:1.05rem;line-height:1.5;min-width:0;overflow-wrap:anywhere}
+.a p{margin:0 0 .6em}.a p:last-child{margin:0}
+.a ul,.a ol{margin:.2em 0 .4em;padding-left:1.15em}.a li{margin:.15em 0}
+.a b{color:var(--accent)}
+.a code,.q code{font-family:var(--f-mono);font-size:.9em}
+.a code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px}
+.hint{margin-top:auto;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em}
+.back .hint{color:var(--back-muted)}
+.mark{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em}
+.mark.ok{color:var(--ok)}.mark.bad{color:var(--bad)}
+.toprow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+@media (prefers-reduced-motion: reduce){.card{transition:none}}
+
+.ctrls{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px}
+.judge{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.b{font:600 1rem var(--f-body);padding:13px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;min-height:48px}
+button.b:focus-visible,.cat:focus-visible,.linkbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.b:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.good{border-color:var(--ok);color:var(--ok)}
+button.wrong{border-color:var(--bad);color:var(--bad)}
+
+.end{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.end h2{font-family:var(--f-display);font-size:1.8rem;margin:0}
+.rows{display:grid;gap:6px;font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:12px;font-size:.95rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.row .ok{color:var(--ok);font-family:var(--f-mono)}.row .bad{color:var(--bad);font-family:var(--f-mono)}
+.empty{padding:28px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:14px}
+.keys{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);text-align:center}
+@media (min-width:640px){.q{font-size:1.9rem}.card{min-height:380px}.face{padding:28px}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><small>Convertidores Avanzados · parcial</small>Tarjetas de repaso</h1>
+    <div class="score" aria-live="polite"><span class="s-ok" id="sOk">✓ 0</span><span class="s-bad" id="sBad">✗ 0</span></div>
+  </header>
+
+  <div>
+    <div class="label" style="margin-bottom:8px">Temas</div>
+    <div class="cats" id="cats"></div>
+  </div>
+
+  <div class="opts">
+    <label class="opt"><input type="checkbox" id="shuffle" checked> Mezclar</label>
+    <label class="opt"><input type="checkbox" id="onlyBad"> Solo las marcadas "a repasar"</label>
+    <button class="linkbtn" id="reset" type="button">Borrar progreso</button>
+  </div>
+
+  <div class="progress"><span id="pos">1 / 1</span><div class="bar"><i id="barFill"></i></div><span id="left"></span></div>
+
+  <div id="deckArea">
+    <div class="stage">
+      <div class="card" id="card" tabindex="0" role="button" aria-label="Tarjeta: toca para voltear">
+        <div class="face front">
+          <div class="toprow"><span class="tag" id="fTag">Pregunta</span><span class="mark" id="fMark"></span></div>
+          <p class="q" id="q"></p>
+          <div class="sym" id="sym" hidden></div>
+          <div class="hint">TOCA PARA VER LA RESPUESTA</div>
+        </div>
+        <div class="face back">
+          <span class="tag" id="bTag"></span>
+          <div class="a" id="a"></div>
+          <div class="hint">TOCA PARA VOLVER A LA PREGUNTA</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="judge" id="judge">
+    <button class="b wrong" id="btnBad" type="button">✗ A repasar</button>
+    <button class="b good" id="btnOk" type="button">✓ La sabía</button>
+  </div>
+  <div class="ctrls">
+    <button class="b" id="prev" type="button">← Anterior</button>
+    <button class="b primary" id="flip" type="button">Ver respuesta</button>
+    <button class="b" id="next" type="button">Siguiente →</button>
+  </div>
+  <div class="keys">Desliza la tarjeta ← → para cambiar · En teclado: espacio voltea, flechas avanzan</div>
+
+  <div class="end" id="end" hidden>
+    <h2>Mazo terminado</h2>
+    <div class="rows" id="sumRows"></div>
+    <div class="ctrls" style="grid-template-columns:1fr 1fr">
+      <button class="b wrong" id="redoBad" type="button">Repasar las falladas</button>
+      <button class="b primary" id="restart" type="button">Empezar de nuevo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS={
+  seccion:"Cálculo de sección",
+  prot:"Protecciones",
+  mcc:"Motores CC",
+  mca:"Motores CA",
+  arr:"Arranque de motores",
+  simb:"Simbología"
+};
+const S=(inner)=>`<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const NA='<line x1="50" y1="6" x2="50" y2="36"/><line x1="50" y1="94" x2="50" y2="66"/><line x1="50" y1="66" x2="33" y2="34"/>';
+const SYM={
+  na:S(NA),
+  nc:S('<line x1="50" y1="6" x2="50" y2="38"/><line x1="50" y1="38" x2="63" y2="38"/><line x1="50" y1="94" x2="50" y2="66"/><line x1="50" y1="66" x2="66" y2="32"/>'),
+  contactor:S(NA+'<path d="M44 36 A6 6 0 0 0 56 36"/>'),
+  automatico:S(NA+'<line x1="45" y1="31" x2="55" y2="41"/><line x1="45" y1="41" x2="55" y2="31"/>'),
+  seccionador:S(NA+'<line x1="43" y1="36" x2="57" y2="36"/>'),
+  pulsador:S(NA+'<line x1="41" y1="50" x2="20" y2="50" stroke-dasharray="4 4"/><line x1="20" y1="42" x2="20" y2="58"/><line x1="20" y1="42" x2="26" y2="42"/><line x1="20" y1="58" x2="26" y2="58"/>'),
+  fusible:S('<line x1="50" y1="6" x2="50" y2="94"/><rect x="40" y="26" width="20" height="48" fill="none"/>'),
+  bobina:S('<line x1="50" y1="6" x2="50" y2="38"/><line x1="50" y1="62" x2="50" y2="94"/><rect x="28" y="38" width="44" height="24" fill="none"/><text x="56" y="22" font-size="11" fill="currentColor" stroke="none" font-family="monospace">A1</text><text x="56" y="86" font-size="11" fill="currentColor" stroke="none" font-family="monospace">A2</text>'),
+  lampara:S('<line x1="50" y1="6" x2="50" y2="32"/><line x1="50" y1="68" x2="50" y2="94"/><circle cx="50" cy="50" r="18" fill="none"/><line x1="37.3" y1="37.3" x2="62.7" y2="62.7"/><line x1="62.7" y1="37.3" x2="37.3" y2="62.7"/>'),
+  tierra:S('<line x1="50" y1="8" x2="50" y2="56"/><line x1="28" y1="56" x2="72" y2="56"/><line x1="36" y1="67" x2="64" y2="67"/><line x1="44" y1="78" x2="56" y2="78"/>'),
+  motor:S('<line x1="38" y1="6" x2="38" y2="28"/><line x1="50" y1="6" x2="50" y2="24"/><line x1="62" y1="6" x2="62" y2="28"/><circle cx="50" cy="56" r="32" fill="none"/><text x="50" y="56" font-size="20" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">M</text><text x="50" y="76" font-size="15" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">3~</text>'),
+  trafo:S('<line x1="50" y1="4" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="96"/><circle cx="50" cy="38" r="18" fill="none"/><circle cx="50" cy="62" r="18" fill="none"/>'),
+  termico:S('<line x1="50" y1="6" x2="50" y2="30"/><line x1="50" y1="70" x2="50" y2="94"/><rect x="28" y="30" width="44" height="40" fill="none"/><path d="M38 60 H48 V40 H62"/>')
+};
+
+const C=[
+// ===== Cálculo de sección =====
+["seccion","¿Cuáles son los tres criterios para elegir la sección de un cable?","<ul><li><b>C.M.A.</b> (Corriente Máxima Admisible): que no se recaliente.</li><li><b>C.T.</b> (Caída de Tensión): que no pierda demasiados voltios.</li><li><b>R.M.</b> (Resistencia Mecánica): sección mínima para no dañarse al instalarlo.</li></ul><p>Se elige la <b>mayor</b> de las tres.</p>"],
+["seccion","Fórmula de la corriente en monofásico","<p><code>I = P / (U · cos φ)</code></p><p>Con P = potencia absorbida (o de arranque si corresponde coeficiente).</p>"],
+["seccion","Fórmula de la corriente en trifásico","<p><code>I = P / (√3 · U · cos φ)</code></p><p>U es la tensión <b>entre fases</b>. El √3 va siempre, sea 230 V o 400 V.</p>"],
+["seccion","Fórmula de sección por caída de tensión en monofásico","<p><code>S = 2 · L · I · cos φ / (γ · ΔU)</code></p><p>El <b>2</b> cuenta la ida y la vuelta; L es solo la ida.</p>"],
+["seccion","Fórmula de sección por caída de tensión en trifásico","<p><code>S = √3 · L · I · cos φ / (γ · ΔU)</code></p>"],
+["seccion","¿Qué caída de tensión máxima admite el reglamento de UTE?","<p><b>3 %</b> para circuitos de alumbrado.</p><p><b>5 %</b> para otros usos (motores, fuerza).</p><p>Se pasa a voltios: ΔU = % × U.</p>"],
+["seccion","El enunciado dice \"R: 70 %\". ¿Qué es y cómo se usa?","<p>Es el <b>rendimiento η</b>.</p><p><code>P_abs = P_útil / η</code></p><p>La potencia absorbida siempre es <b>mayor</b> que la útil, porque el motor pierde energía en calor y rozamiento.</p>"],
+["seccion","Un motor entrega 1200 W en el eje con η = 70 %. ¿Cuánto absorbe de la red?","<p><code>1200 / 0,70 ≈ 1714 W</code></p><p>Esos 1714 W son los que viajan por el cable.</p>"],
+["seccion","El enunciado dice \"fi: 0,68\". ¿Hay que calcular el coseno?","<p><b>No.</b> Un número entre 0 y 1 sin unidad ya es el <b>cos φ</b>. Va directo a la fórmula.</p><p>Solo calculas coseno si te dan el ángulo en grados (φ = 47°).</p><p>Un cos φ de 0,68 indica carga <b>inductiva</b> (motor).</p>"],
+["seccion","¿Por qué un cos φ bajo aumenta la corriente?","<p>Para la misma potencia activa, la carga también necesita corriente <b>reactiva</b> para magnetizarse. Esa corriente no produce trabajo pero sí calienta el cable.</p><p>Ejemplo: 1714 W en 220 V → 7,8 A con cos φ = 1, pero <b>11,46 A</b> con cos φ = 0,68.</p>"],
+["seccion","¿Qué coeficiente se aplica a los motores y por qué?","<p><b>× 1,25</b> sobre la potencia absorbida.</p><p>El reglamento de UTE pide dimensionar el cable de un motor para el <b>125 %</b> de su corriente a plena carga.</p>"],
+["seccion","¿Qué coeficiente se aplica al alumbrado de descarga?","<p><b>× 1,3</b> sobre la potencia (por equipos auxiliares y corrientes armónicas).</p>"],
+["seccion","¿Cuántos vatios es 1 HP?","<p><b>746 W</b>.</p><p>Ejemplo: 2 HP = 1492 W.</p>"],
+["seccion","La sección calculada dio 1,35 mm². ¿Qué cable comercial eliges?","<p><b>1,5 mm²</b>. Siempre se redondea <b>hacia arriba</b>, a la sección normalizada siguiente. Una menor no cumpliría la caída admisible.</p>"],
+["seccion","A mayor sección, ¿más o menos resistencia tiene el cable?","<p><b>Menos.</b> <code>R = ρ · L / S</code>: la sección está en el denominador.</p><p>Más sección → menos resistencia → menos caída de tensión.</p>"],
+["seccion","Sistema IT en Uruguay: ¿qué tensión hay y entre qué conductores?","<p>No hay neutro distribuido. Las fases tienen <b>230 V entre sí</b> (muchos docentes usan 220 V).</p><p>Monofásico = entre 2 fases. El factor <b>2</b> de la fórmula se mantiene.</p><p>Trifásico = las 3 fases, también a 230 V entre fases.</p>"],
+["seccion","Sistema TT 400/230 V: ¿qué tensión hay entre qué conductores?","<p><b>400 V</b> entre fases.</p><p><b>230 V</b> entre fase y neutro.</p><p>400 = 230 × √3.</p>"],
+["seccion","Secciones mínimas por R.M. (Resistencia Mecánica)","<ul><li>Alumbrado: <b>0,75 mm²</b></li><li>Otros usos (motores): <b>1 mm²</b></li><li>Tomacorrientes en salto: <b>1,5 mm²</b></li><li>Derivaciones individuales / repartidoras: <b>6 mm²</b></li></ul>"],
+["seccion","¿Qué es la corrección por coexistencia y qué factores usa?","<p>Cables cargados que comparten caño se calientan entre sí, así que aguantan menos.</p><ul><li>Hasta 3 conductores: sin corrección</li><li>De 4 a 7: <b>× 0,9</b></li><li>Más de 7: <b>× 0,7</b></li></ul><p>Se aplica al I_Z: <code>I_Z corregido = I_Z × factor</code>.</p>"],
+["seccion","¿Qué factor de corrección se usa a 32 °C de temperatura?","<p><b>0,88</b> sobre el I_Z del cable.</p>"],
+["seccion","Motor de 2 HP, cos φ 0,8, η 78 %, 400 V trifásico, 25 m. ¿Sección y protección?","<ul><li>P_abs = 1492 / 0,78 ≈ 1913 W</li><li>P_arr = 1913 × 1,25 ≈ 2391 W</li><li>I = 2391 / (√3 · 400 · 0,8) ≈ 4,31 A</li><li>C.M.A.: 0,75 mm² · C.T.: 0,13 → 0,75 mm² · R.M.: <b>1 mm²</b></li><li>Termomagnético: 4,31 ≤ <b>6 A</b> ≤ 13 A</li></ul>"],
+
+// ===== Protecciones =====
+["prot","¿Qué regla debe cumplir el termomagnético respecto al cable?","<p><code>I_B ≤ I_N ≤ I_Z</code></p><ul><li><b>I_B</b>: corriente del circuito</li><li><b>I_N</b>: calibre del termomagnético</li><li><b>I_Z</b>: lo que aguanta el cable</li></ul><p>No debe saltar en uso normal, pero sí antes de que el cable se recaliente.</p>"],
+["prot","Si entre I_B e I_Z caben dos calibres (6 A y 10 A), ¿cuál eliges?","<p>El <b>más cercano por encima de I_B</b> (6 A). Corta antes ante cualquier sobrecarga y protege mejor.</p>"],
+["prot","Calibres normalizados de termomagnéticos (IEC 60898)","<p>1, 2, 3, <b>6, 10, 16, 20, 25, 32, 40</b>, 50, 63, 80, 100, 125 A.</p>"],
+["prot","¿A quién protege el termomagnético?","<p>A la <b>instalación</b>: al cable. Es el \"guardaespaldas del cable\".</p><p><b>No</b> protege a las personas de una descarga.</p>"],
+["prot","¿Qué dos partes tiene un termomagnético y contra qué protege cada una?","<ul><li><b>Térmica</b> (bimetal): <b>sobrecargas</b>. Actúa lento.</li><li><b>Magnética</b> (bobina): <b>cortocircuitos</b>. Actúa instantánea.</li></ul>"],
+["prot","Curvas de disparo B, C y D: ¿cuándo se usa cada una?","<ul><li><b>B</b> (3–5 × In): cargas resistivas, líneas largas</li><li><b>C</b> (5–10 × In): uso general, alumbrado y tomas</li><li><b>D</b> (10–20 × In): motores y transformadores, con grandes picos de arranque</li></ul>"],
+["prot","¿Por qué el pico de arranque de un motor no hace saltar su termomagnético?","<ul><li>La parte <b>térmica</b> reacciona lento y tolera picos cortos.</li><li>Para motores se usan curvas <b>C o D</b>, con disparo magnético más alto.</li><li>El cálculo ya incluyó el × 1,25.</li></ul>"],
+["prot","¿Qué protege el interruptor diferencial y cómo funciona?","<p>Protege a las <b>personas</b> contra descargas y la instalación contra incendios por fugas.</p><p>Compara la corriente que <b>entra</b> con la que <b>sale</b>. Si hay diferencia, es porque se fuga a tierra (o por una persona), y corta.</p>"],
+["prot","¿Qué sensibilidad tiene el diferencial de uso doméstico?","<p><b>30 mA</b> (I∆N). Es el valor que protege a las personas.</p>"],
+["prot","¿El diferencial protege contra cortocircuitos y sobrecargas?","<p><b>No.</b> Solo detecta fugas. Por eso siempre va acompañado de un termomagnético.</p>"],
+["prot","¿Qué es un fusible?","<p>Un hilo calibrado que se <b>funde</b> si pasa demasiada corriente. Protege contra cortocircuitos (y sobrecargas).</p><p>Es de <b>un solo uso</b>. Tipos: gG (uso general) y aM (acompañamiento de motores).</p>"],
+["prot","¿Qué es un guardamotor?","<p>Un interruptor magnetotérmico pensado para <b>motores</b>, con la parte térmica <b>regulable</b> a la corriente del motor.</p><p>Protege contra sobrecarga, cortocircuito y falta de fase.</p>"],
+["prot","¿Qué hace el relé térmico y qué no hace?","<p>Protege al <b>motor contra sobrecargas</b>. Abre su contacto <b>95-96</b> y corta la bobina del contactor.</p><p><b>No</b> corta cortocircuitos: necesita fusibles o un magnético antes.</p>"],
+["prot","Diferencia entre seccionador e interruptor","<p>El <b>seccionador</b> abre <b>sin carga</b>: sirve para aislar el circuito de forma visible y segura para mantenimiento.</p><p>El <b>interruptor</b> puede abrir <b>con carga</b>.</p>"],
+["prot","¿Para qué sirve la puesta a tierra?","<p>Da un camino seguro a la corriente de falla desde las <b>masas metálicas</b> hacia tierra. Así la persona no queda en tensión y el diferencial detecta la fuga y corta.</p>"],
+["prot","¿Qué es un DPS (protector contra sobretensiones)?","<p>Un dispositivo que deriva a tierra las <b>sobretensiones transitorias</b> (rayos, maniobras de red) para proteger los equipos.</p>"],
+["prot","En un motor: ¿qué protege el termomagnético y qué protege el térmico?","<p>El <b>termomagnético</b> protege el <b>cable</b> (y corta cortocircuitos).</p><p>El <b>relé térmico</b> protege al <b>motor</b> contra sobrecargas.</p>"],
+
+// ===== Motores CC =====
+["mcc","¿Cuáles son las partes principales de un motor de CC?","<ul><li><b>Estator</b> (inductor): crea el campo</li><li><b>Rotor</b> (inducido)</li><li><b>Colector y escobillas</b></li></ul>"],
+["mcc","¿Para qué sirven el colector y las escobillas?","<p>Invierten el sentido de la corriente en el rotor en el momento justo, para que siga girando siempre hacia el mismo lado.</p>"],
+["mcc","¿Cómo se clasifican los motores de CC?","<p>Según cómo se conecta la <b>excitación</b> (el campo): serie, derivación (shunt), compuesta, excitación independiente e imanes permanentes.</p>"],
+["mcc","Motor CC serie: característica principal y aplicaciones","<p><b>Par de arranque muy alto.</b></p><p>Tracción (trenes, tranvías), arranque de autos, grúas.</p>"],
+["mcc","¿Por qué un motor CC serie nunca debe arrancar en vacío?","<p>Se <b>embala</b>: la velocidad sube sin control.</p><p>Sin carga baja la corriente, se debilita el campo (que depende de esa corriente) y el motor acelera para compensar.</p>"],
+["mcc","Necesito velocidad casi constante aunque varíe la carga. ¿Qué motor CC elijo?","<p><b>Derivación (shunt).</b> Ejemplos: máquinas herramienta, tornos.</p>"],
+["mcc","Motor CC compuesto: ¿qué combina y dónde se usa?","<p>Buen <b>par de arranque</b> (parte serie) y <b>velocidad estable</b> (parte shunt).</p><p>Ascensores, prensas.</p>"],
+["mcc","¿Qué es un motor brushless (BLDC)?","<p>Un motor sin escobillas: la conmutación la hace la <b>electrónica</b>. Requiere menos mantenimiento.</p><p>Drones, ventiladores de PC, vehículos eléctricos.</p>"],
+["mcc","¿Para qué se usa un motor paso a paso?","<p>Para <b>posicionamiento preciso</b>: gira en pasos exactos.</p><p>Impresoras 3D, CNC, robótica.</p>"],
+["mcc","¿Cómo se invierte el giro de un motor CC?","<p>Invirtiendo la polaridad del <b>inducido</b> o del <b>campo</b>, pero no de los dos a la vez (si inviertes ambos, sigue girando igual).</p>"],
+
+// ===== Motores CA =====
+["mca","Diferencia fundamental entre motor síncrono y asíncrono","<p>El <b>síncrono</b> gira <b>exactamente</b> a la velocidad del campo (n_s).</p><p>El <b>asíncrono</b> gira un poco más lento. Esa diferencia (deslizamiento) es necesaria para inducir corriente en el rotor y tener par.</p>"],
+["mca","Fórmula de la velocidad de sincronismo","<p><code>n_s = 60 · f / p</code> (p = pares de polos)</p><p>En Uruguay, 50 Hz: 1 par → <b>3000</b> rpm, 2 → <b>1500</b>, 3 → <b>1000</b>.</p>"],
+["mca","Fórmula del deslizamiento","<p><code>s = (n_s − n) / n_s</code></p><p>n = velocidad real del rotor. Suele dar entre 2 % y 6 %.</p>"],
+["mca","Motor de 2 pares de polos a 1440 rpm, 50 Hz. ¿Deslizamiento?","<p>n_s = 1500 rpm.</p><p><code>s = (1500 − 1440) / 1500 = 0,04</code> → <b>4 %</b></p>"],
+["mca","¿Cuál es el motor más usado del mundo y por qué?","<p>El <b>asíncrono de jaula de ardilla</b>: robusto, barato y casi sin mantenimiento.</p><p>Bombas, ventiladores, compresores, cintas.</p>"],
+["mca","Jaula de ardilla vs. rotor bobinado","<p><b>Jaula:</b> rotor de barras en cortocircuito. Simple y robusto.</p><p><b>Rotor bobinado</b> (anillos rozantes): permite conectar resistencias al rotor para controlar el arranque. Grúas y cargas pesadas.</p>"],
+["mca","Aplicaciones del motor síncrono","<p>Generadores de centrales (alternadores), cargas de velocidad exacta y <b>corrección del factor de potencia</b>.</p>"],
+["mca","¿Por qué un motor monofásico no arranca solo?","<p>Un solo bobinado crea un campo que pulsa pero <b>no gira</b>. Necesita un \"truco\" (bobinado auxiliar, condensador, espira) para crear un campo giratorio al inicio.</p>"],
+["mca","Condensador de arranque vs. condensador permanente","<p><b>De arranque:</b> se desconecta tras arrancar. Da buen par. Compresores, heladeras.</p><p><b>Permanente:</b> siempre conectado. Marcha suave. Ventiladores, extractores.</p>"],
+["mca","Motor de polos sombreados: ¿cómo arranca y dónde se usa?","<p>Con una <b>espira en cortocircuito</b> en parte del polo. Tiene bajo par.</p><p>Ventiladores chicos, secadores.</p>"],
+["mca","¿Qué es un motor universal?","<p>Un motor <b>serie con colector</b> que funciona en <b>CA y CC</b>.</p><p>Alta velocidad, buen par de arranque, chico y liviano. Taladros, licuadoras, aspiradoras.</p>"],
+["mca","¿Por qué un taladro usa motor universal y no uno de jaula de ardilla?","<ul><li>A 50 Hz, un jaula <b>no supera 3000 rpm</b>; el universal gira a 10 000–30 000 rpm.</li><li>Alto par de arranque y poco peso.</li><li>Velocidad regulable con la tensión (el gatillo).</li></ul>"],
+["mca","¿Cómo se invierte el giro de un motor trifásico?","<p>Intercambiando <b>dos fases</b> cualesquiera de la alimentación.</p>"],
+
+// ===== Arranque =====
+["arr","¿Qué problema resuelven los métodos de arranque?","<p>Al arrancar, un motor de inducción consume <b>5 a 8 veces</b> su corriente nominal.</p><p>Ese pico provoca caídas de tensión, disparos de protecciones y golpes mecánicos.</p>"],
+["arr","Arranque directo: ventaja, desventaja y uso","<p>Simple y barato, pero con el <b>pico completo</b>.</p><p>Para motores chicos.</p>"],
+["arr","¿Cuánto reduce el arranque estrella-triángulo la corriente y el par?","<p>Los dos a <b>1/3</b>.</p><p>En estrella, cada bobina recibe U/√3, y como depende del cuadrado: (1/√3)² = 1/3.</p>"],
+["arr","Desventajas del arranque estrella-triángulo","<ul><li>Solo 1/3 del par: arranque en vacío o con poca carga.</li><li>Un pico de corriente al conmutar a triángulo.</li><li>El motor necesita <b>6 bornes</b> y estar preparado para trabajar en Δ a la tensión de red.</li></ul>"],
+["arr","¿Cuántos contactores lleva un estrella-triángulo y en qué orden entran?","<p><b>3 contactores</b> + un temporizador:</p><ol><li>Estrella (KM1) y de línea (KM2) arrancan.</li><li>Tras el tiempo, sale estrella y entra <b>triángulo</b> (KM3).</li></ol><p>Estrella y triángulo llevan <b>enclavamiento</b>: nunca pueden estar cerrados juntos.</p>"],
+["arr","Arranque por autotransformador","<p>Arranca con <b>tensión reducida</b> mediante tomas (65 %, 80 %…).</p><p>Da más par que el estrella-triángulo, pero es caro y voluminoso. Motores grandes.</p>"],
+["arr","¿Qué método de arranque AUMENTA el par y con qué motor se puede usar?","<p><b>Resistencias rotóricas</b>, solo con motor de <b>rotor bobinado</b>. Reduce la corriente y sube el par.</p><p>Grúas, cargas pesadas.</p>"],
+["arr","¿Qué hace un arrancador suave (soft starter)?","<p>Con <b>tiristores</b>, sube la tensión en rampa: arranque y <b>parada</b> suaves.</p><p><b>No regula la velocidad</b> durante la marcha.</p>"],
+["arr","¿Qué hace un variador de frecuencia?","<p>Rectifica la red y genera una nueva CA de <b>frecuencia y tensión variables</b>.</p><p>Arranque suave <b>y control de velocidad</b>. Ahorra energía. Es el más caro.</p>"],
+["arr","Bomba de agua: quiero evitar el golpe de ariete al parar. ¿Qué uso?","<p><b>Arrancador suave</b>: hace la parada en rampa.</p>"],
+["arr","Cinta transportadora que debe cambiar de velocidad en marcha. ¿Arrancador suave o variador?","<p><b>Variador de frecuencia.</b> El arrancador suave solo actúa al arrancar y parar; no cambia la velocidad durante el trabajo.</p>"],
+
+// ===== Simbología =====
+["simb","¿Qué símbolo es este?","<p><b>Contacto normalmente abierto (NA)</b>, de cierre.</p>","na"],
+["simb","¿Qué símbolo es este?","<p><b>Contacto normalmente cerrado (NC)</b>, de apertura.</p>","nc"],
+["simb","¿Qué símbolo es este? (fíjate en el semicírculo)","<p><b>Contacto principal de contactor</b> (de potencia). El semicírculo indica función de contactor.</p>","contactor"],
+["simb","¿Qué símbolo es este? (fíjate en la cruz)","<p><b>Interruptor automático</b> (disyuntor). La cruz indica función de interruptor automático.</p>","automatico"],
+["simb","¿Qué símbolo es este? (fíjate en la barra)","<p><b>Seccionador.</b> La barra indica función de seccionamiento.</p>","seccionador"],
+["simb","¿Qué símbolo es este?","<p><b>Pulsador NA</b> (contacto de cierre con retorno automático). La línea punteada con forma de E es el mando de pulsador.</p>","pulsador"],
+["simb","¿Qué símbolo es este?","<p><b>Fusible</b> (cortacircuitos).</p>","fusible"],
+["simb","¿Qué símbolo es este?","<p><b>Bobina</b> de relé o contactor, con bornes <b>A1 – A2</b>.</p>","bobina"],
+["simb","¿Qué símbolo es este?","<p><b>Lámpara</b> (o piloto de señalización).</p>","lampara"],
+["simb","¿Qué símbolo es este?","<p><b>Tierra</b>, símbolo general. Si está dentro de un círculo, es tierra de protección.</p>","tierra"],
+["simb","¿Qué símbolo es este?","<p><b>Motor trifásico</b> de corriente alterna (M 3~). Con \"M 1~\" sería monofásico; con \"M\" y \"=\", de continua.</p>","motor"],
+["simb","¿Qué símbolo es este?","<p><b>Transformador</b> de dos arrollamientos (forma unifilar).</p>","trafo"],
+["simb","¿Qué símbolo es este?","<p><b>Relé térmico</b> (protección contra sobrecarga). El trazo escalonado es el símbolo de efecto térmico.</p>","termico"],
+["simb","Letras de identificación: ¿qué es KM, KA, Q, F y M?","<ul><li><b>KM</b>: contactor de potencia</li><li><b>KA</b>: relé o contactor auxiliar</li><li><b>Q</b>: interruptor de potencia, seccionador, guardamotor, diferencial</li><li><b>F</b>: protección (fusible, relé térmico)</li><li><b>M</b>: motor</li></ul>"],
+["simb","Letras de identificación: ¿qué es S, H, T, X y U?","<ul><li><b>S</b>: pulsadores, selectores, finales de carrera</li><li><b>H</b>: señalización (pilotos, alarmas)</li><li><b>T</b>: transformador</li><li><b>X</b>: regletero de bornes</li><li><b>U</b>: variadores, convertidores</li></ul>"],
+["simb","¿Cómo se numeran los bornes de los contactos principales (de potencia)?","<p>Con una cifra: <b>1-2, 3-4, 5-6</b> en tripolares (hasta 7-8 en tetrapolares). Los impares van arriba.</p>"],
+["simb","Contactos auxiliares: ¿qué indica cada cifra? (ej. 13-14, 21-22)","<p><b>Primera cifra:</b> número de orden del contacto.</p><p><b>Segunda cifra:</b> función → <b>1-2 = NC</b>, <b>3-4 = NA</b>, 5-6 = NC especial (temporizado), 7-8 = NA especial.</p><p>13-14 = 1er contacto, NA. 21-22 = 2º contacto, NC.</p>"],
+["simb","¿Qué significan los bornes 95-96 y 97-98?","<p>Contactos auxiliares del <b>relé térmico</b>: <b>95-96 = NC</b> (corta el mando), <b>97-98 = NA</b> (señaliza el disparo).</p>"],
+["simb","¿Cómo se nombran los bornes de la bobina de un contactor?","<p><b>A1 y A2</b>. Si tiene un segundo devanado: B1 y B2.</p>"],
+["simb","¿Cómo se identifican los conductores de alimentación y las salidas a un motor?","<p>Alimentación: <b>L1, L2, L3, N, PE</b>.</p><p>Salidas a motor trifásico: <b>U, V, W</b> (+PE).</p>"],
+["simb","¿Qué significa \"4x6 mm² 3F+N\" en un unifilar?","<p><b>4 conductores de 6 mm²</b>: 3 fases y neutro.</p><p>En unifilar, la cantidad de conductores también se indica con <b>barras cruzadas</b> sobre la línea, o una barra con el número.</p>"],
+["simb","Esquema unifilar vs. desarrollado","<p><b>Unifilar:</b> agrupa los conductores en una línea. Visión general de la distribución; no sirve para cablear.</p><p><b>Desarrollado:</b> muestra cada conexión. Sirve para entender el funcionamiento, cablear y reparar.</p>"],
+["simb","Colores normalizados de pilotos: RD, GN, YE, BU, WH","<p>RD = rojo · GN = verde · YE = amarillo · BU = azul · WH = blanco.</p>"],
+["simb","En el símbolo de máquina, ¿qué significan M, G, MS y GS?","<p><b>M</b> = motor · <b>G</b> = generador · <b>MS</b> = motor síncrono · <b>GS</b> = generador síncrono.</p>"],
+["simb","¿Qué arrancadores tienen símbolo propio en la IEC 60617?","<p>Arrancador general, por etapas, <b>estrella-triángulo</b>, por <b>autotransformador</b>, con inversión de giro, y regulador por <b>tiristores</b> (variador / convertidor de frecuencia).</p><p>Todos parten de un rectángulo con una diagonal.</p>"]
+].map((c,i)=>({id:i,cat:c[0],q:c[1],a:c[2],sym:c[3]||null}));
+
+/* ---------- estado ---------- */
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let marks=store.get("tp_marks",{});           // id -> "ok" | "bad"
+let sel=new Set(store.get("tp_cats",Object.keys(CATS)));
+let deck=[],pos=0,flipped=false;
+const $=id=>document.getElementById(id);
+
+function renderCats(){
+  const box=$("cats");box.innerHTML="";
+  const all=document.createElement("button");
+  all.className="cat";all.type="button";
+  all.setAttribute("aria-pressed",sel.size===Object.keys(CATS).length);
+  all.innerHTML=`Todas <span class="n">${C.length}</span>`;
+  all.onclick=()=>{sel=new Set(sel.size===Object.keys(CATS).length?[]:Object.keys(CATS));if(!sel.size)sel=new Set(Object.keys(CATS));save();build();};
+  box.appendChild(all);
+  for(const [k,name] of Object.entries(CATS)){
+    const n=C.filter(c=>c.cat===k).length;
+    const b=document.createElement("button");
+    b.className="cat";b.type="button";
+    const on=sel.has(k)&&sel.size!==Object.keys(CATS).length;
+    b.setAttribute("aria-pressed",on);
+    b.innerHTML=`${name} <span class="n">${n}</span>`;
+    b.onclick=()=>{
+      if(sel.size===Object.keys(CATS).length){sel=new Set([k]);}
+      else if(sel.has(k)){sel.delete(k);if(!sel.size)sel=new Set(Object.keys(CATS));}
+      else sel.add(k);
+      save();build();
+    };
+    box.appendChild(b);
+  }
+}
+function save(){store.set("tp_cats",[...sel]);store.set("tp_marks",marks);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function build(){
+  renderCats();
+  let list=C.filter(c=>sel.has(c.cat));
+  if($("onlyBad").checked) list=list.filter(c=>marks[c.id]==="bad");
+  if($("shuffle").checked) list=shuffle(list.slice());
+  deck=list;pos=0;flipped=false;
+  $("end").hidden=true;
+  show();
+}
+function updScore(){
+  const v=Object.values(marks);
+  $("sOk").textContent="✓ "+v.filter(x=>x==="ok").length;
+  $("sBad").textContent="✗ "+v.filter(x=>x==="bad").length;
+}
+function show(){
+  updScore();
+  const area=$("deckArea"),has=deck.length>0;
+  ["judge"].forEach(id=>$(id).hidden=!has);
+  document.querySelector(".ctrls").hidden=!has;
+  if(!has){
+    $("card").parentElement.hidden=true;
+    let e=$("emptyMsg");
+    if(!e){e=document.createElement("div");e.id="emptyMsg";e.className="empty";area.appendChild(e);}
+    e.hidden=false;
+    e.textContent=$("onlyBad").checked?"No tienes tarjetas marcadas \"a repasar\" en estos temas. ¡Bien! Desmarca la opción para ver el mazo completo.":"No hay tarjetas para esta selección.";
+    $("pos").textContent="0 / 0";$("barFill").style.width="0";$("left").textContent="";
+    return;
+  }
+  const e=$("emptyMsg");if(e)e.hidden=true;
+  $("card").parentElement.hidden=false;
+  const c=deck[pos];
+  $("fTag").textContent=flipped?"":"Pregunta";
+  $("fTag").textContent="Pregunta";
+  $("q").textContent=c.q;
+  const sym=$("sym");
+  if(c.sym){sym.innerHTML=SYM[c.sym];sym.hidden=false;}else{sym.innerHTML="";sym.hidden=true;}
+  $("bTag").textContent=CATS[c.cat];
+  $("a").innerHTML=c.a;
+  const m=marks[c.id],fm=$("fMark");
+  fm.className="mark "+(m||"");fm.textContent=m==="ok"?"✓ LA SABÍAS":m==="bad"?"✗ A REPASAR":"";
+  $("card").classList.toggle("flipped",flipped);
+  $("flip").textContent=flipped?"Ver pregunta":"Ver respuesta";
+  $("prev").disabled=pos===0;
+  $("next").textContent=pos===deck.length-1?"Terminar ✓":"Siguiente →";
+  $("pos").textContent=`${pos+1} / ${deck.length}`;
+  $("barFill").style.width=((pos+1)/deck.length*100)+"%";
+  const done=deck.filter(x=>marks[x.id]).length;
+  $("left").textContent=`${done} evaluadas`;
+}
+function flip(){flipped=!flipped;show();}
+function go(d){
+  const n=pos+d;
+  if(n<0)return;
+  if(n>=deck.length){finish();return;}
+  pos=n;flipped=false;show();
+}
+function judge(v){marks[deck[pos].id]=v;save();go(1);}
+function finish(){
+  $("end").hidden=false;
+  const rows=$("sumRows");rows.innerHTML="";
+  const cats=[...new Set(deck.map(c=>c.cat))];
+  for(const k of cats){
+    const cs=deck.filter(c=>c.cat===k);
+    const ok=cs.filter(c=>marks[c.id]==="ok").length,bad=cs.filter(c=>marks[c.id]==="bad").length;
+    const r=document.createElement("div");r.className="row";
+    r.innerHTML=`<span>${CATS[k]}</span><span class="ok">✓ ${ok}</span><span class="bad">✗ ${bad}</span>`;
+    rows.appendChild(r);
+  }
+  $("end").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ---------- eventos ---------- */
+const card=$("card");
+let sx=null,sy=null,moved=false;
+card.addEventListener("pointerdown",e=>{sx=e.clientX;sy=e.clientY;moved=false;});
+card.addEventListener("pointerup",e=>{
+  if(sx===null)return;
+  const dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)){go(dx<0?1:-1);return;}
+  if(Math.abs(dx)<10&&Math.abs(dy)<10)flip();
+});
+card.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();flip();}});
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  if(e.key===" "){e.preventDefault();flip();}
+  else if(e.key==="ArrowRight")go(1);
+  else if(e.key==="ArrowLeft")go(-1);
+});
+$("flip").onclick=flip;
+$("next").onclick=()=>go(1);
+$("prev").onclick=()=>go(-1);
+$("btnOk").onclick=()=>judge("ok");
+$("btnBad").onclick=()=>judge("bad");
+$("shuffle").onchange=build;
+$("onlyBad").onchange=build;
+$("restart").onclick=()=>{$("onlyBad").checked=false;build();window.scrollTo({top:0,behavior:"smooth"});};
+$("redoBad").onclick=()=>{$("onlyBad").checked=true;build();window.scrollTo({top:0,behavior:"smooth"});};
+let resetArmed=false;
+$("reset").onclick=()=>{
+  if(!resetArmed){resetArmed=true;$("reset").textContent="Toca otra vez para confirmar";setTimeout(()=>{resetArmed=false;$("reset").textContent="Borrar progreso";},3000);return;}
+  marks={};save();resetArmed=false;$("reset").textContent="Borrar progreso";build();
+};
+build();
+</script>
+
+</body>
+</html>
